@@ -34,7 +34,7 @@ const Room = ({ params }: ParamsProps) => {
   const router = useRouter();
   const [startGame, setStartGame] = useState<boolean>(false);
   const [finishGame, setFinishGame] = useState<boolean>(false);
-  const [questions, setQuestions] = useState<question[] | null>(null);
+  const [questions, setQuestions] = useState<Question[] | null>(null);
   const [bgColors, setBgColors] = useState<string[]>(["#ff996d", "#ffea00", "#bcffdd", "#0aefff"]);
   const [answerBy, setAnswerBy] = useState<{ index: number; name: string }>({ index: 0, name: "" });
   const [timer, setTimer] = useState<number>(30);
@@ -68,7 +68,7 @@ const Room = ({ params }: ParamsProps) => {
   useEffect(() => {
     socket.emit("join-room", { roomId });
 
-    const questionRef = ref(db, "questions");
+    const questionRef = ref(db, "rapidfire/rooms/" + roomId + "/questions");
 
     onValue(questionRef, (snapshot) => {
       setQuestions(snapshot.val());
@@ -120,7 +120,7 @@ const Room = ({ params }: ParamsProps) => {
     });
   }, []);
 
-  const [counter, setCounter] = useState<number>(questions ? questions.length - 1 : 4);
+  const [counter, setCounter] = useState<number>(0);
 
   useEffect(() => {
     socket.on("updateCounter", ({ roomId, index, userName, correct }) => {
@@ -146,18 +146,18 @@ const Room = ({ params }: ParamsProps) => {
         bg[1] = "red";
         bg[2] = "red";
         bg[3] = "red";
-        bg[questions[counter].correct] = "green";
+        bg[parseInt(questions[counter].correct)] = "green";
         setBgColors(bg);
       }
 
       setTimeout(
         () =>
           setCounter((prev) => {
-            if (prev - 1 < 0) {
+            if (prev + 1 >= questions.length) {
               socket.emit("finishgame", roomId);
               return 0;
             } else {
-              return prev - 1;
+              return prev + 1;
             }
           }),
         1000
@@ -170,25 +170,25 @@ const Room = ({ params }: ParamsProps) => {
     });
   }, [questions]);
 
-  useEffect(() => {
-    setInterval(() => {
-      if (timer > 0) {
-        setTimer((prev) => prev - 1);
-      }
-    }, 1000);
-  }, []);
+  // useEffect(() => {
+  //   if (startGame)
+  //     setInterval(() => {
+  //       if (timer > 0) {
+  //         setTimer((prev) => prev - 1);
+  //       }
+  //     }, 1000);
+  // }, [startGame]);
 
   // useEffect(() => {
   //   if (timer <= 0) {
-  //     setTimeout(() => {
-  //       setTimer(0);
-  //       socket.emit("updateCounter", {
-  //         roomId: roomId,
-  //         index: 0,
-  //         userName: "",
-  //         correct: true,
-  //       });
-  //     }, 500);
+  //     setTimer(0);
+
+  //     socket.emit("updateCounter", {
+  //       roomId: roomId,
+  //       index: 0,
+  //       userName: user.name,
+  //       correct: true,
+  //     });
   //   }
   // }, [timer]);
 
@@ -259,9 +259,9 @@ const Room = ({ params }: ParamsProps) => {
                   <div className="flex gap-20 mt-20 flex-wrap items-center justify-center">
                     {questions[counter].options.map((opt, index) => (
                       <button
-                        key={opt}
+                        key={opt.label}
                         onClick={() => {
-                          if (index === questions[counter].correct) {
+                          if (index === parseInt(questions[counter].correct)) {
                             setPoints((prev) => {
                               set(ref(db, "rapidfire/rooms/" + roomId + "/points/" + user.name), {
                                 points: prev + 10,
@@ -280,13 +280,13 @@ const Room = ({ params }: ParamsProps) => {
                             roomId: roomId,
                             index: index,
                             userName: user.name,
-                            correct: index === questions[counter].correct,
+                            correct: index === parseInt(questions[counter].correct),
                           });
                         }}
                         className="text-black w-[300px] h-[60px] text-lg font-bold relative"
                         style={{ background: bgColors[index] }}
                       >
-                        {opt}
+                        {opt.label}
                         {answerBy.name !== "" && answerBy.index === index && (
                           <p className="absolute right-2 bottom-2 text-sm z-10">{answerBy.name}</p>
                         )}

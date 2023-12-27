@@ -86,10 +86,9 @@ export default function Home() {
     if (!name) return setNameError(true);
     setNameError(false);
     const roomId = nanoid();
-    const questionRef = ref(db, "questions");
 
     set(ref(db, "quiz/rooms/" + roomId), {
-      questions: questions,
+      questions: noOfQuestions < questions.length ? questions.slice(0, noOfQuestions) : questions,
     });
 
     setUser({ name, roomId, members: [], leader: name });
